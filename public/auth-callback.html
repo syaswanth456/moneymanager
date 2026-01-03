@@ -10,41 +10,50 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
   <script>
     (async () => {
-      // Fetch config from backend
-      const res = await fetch('/api/config');
-      const { supabaseUrl, supabaseAnonKey } = await res.json();
+      try {
+        // 1️⃣ Fetch public config
+        const res = await fetch('/api/config');
+        const { supabaseUrl, supabaseAnonKey } = await res.json();
 
-      // IMPORTANT: create ONE client only
-      const supabase = window.supabase.createClient(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          auth: {
-            persistSession: true,
-            detectSessionInUrl: true
+        // 2️⃣ Create ONE Supabase client
+        const supabase = window.supabase.createClient(
+          supabaseUrl,
+          supabaseAnonKey,
+          {
+            auth: {
+              persistSession: true,
+              detectSessionInUrl: false // IMPORTANT for v2
+            }
           }
+        );
+
+        // 3️⃣ EXPLICITLY exchange OAuth code
+        const { data, error } =
+          await supabase.auth.exchangeCodeForSession(window.location.href);
+
+        if (error || !data.session) {
+          console.error(error);
+          document.body.innerText = 'Login failed. Please try again.';
+          return;
         }
-      );
 
-      // This line FINALIZES OAuth and restores state
-      const { data, error } = await supabase.auth.getSession();
+        // 4️⃣ Initialize accounts (Google users)
+        await fetch('/api/auth/google/complete', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${data.session.access_token}`
+          }
+        });
 
-      if (error || !data.session) {
-        document.body.innerText = 'Login failed. Please try again.';
-        return;
+        // 5️⃣ Redirect to app
+        window.location.replace('/');
+
+      } catch (err) {
+        console.error(err);
+        document.body.innerText = 'Unexpected error during login.';
       }
-
-      // OPTIONAL: call backend to init accounts (Google users)
-      await fetch('/api/auth/google/complete', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${data.session.access_token}`
-        }
-      });
-
-      // Redirect to app dashboard
-      window.location.replace('/');
     })();
   </script>
 </body>
 </html>
+
