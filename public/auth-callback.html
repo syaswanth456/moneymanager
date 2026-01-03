@@ -1,207 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>FinFlow — Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="utf-8" />
+  <title>Signing you in…</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle at top, #0f172a, #020617);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-      color: #e5e7eb;
-    }
-    .card {
-      width: 360px;
-      background: rgba(2, 6, 23, 0.85);
-      padding: 28px;
-      border-radius: 16px;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
-    }
-    h2 {
-      margin-top: 0;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 8px;
-      border: 1px solid #1e293b;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 14px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .google {
-      background: white;
-      color: #111;
-      margin-bottom: 12px;
-    }
-    .primary {
-      background: #7c3aed;
-      color: white;
-    }
-    .secondary {
-      background: transparent;
-      color: #a78bfa;
-      margin-top: 8px;
-    }
-    .hidden {
-      display: none;
-    }
-    .divider {
-      text-align: center;
-      margin: 10px 0;
-      opacity: 0.6;
-    }
+    body { font-family: Inter, system-ui, -apple-system; padding:20px; background:#ffffff; color:#111; }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h2>Sign in to FinFlow</h2>
+  <h3>Completing sign-in…</h3>
+  <div id="msg">Please wait</div>
 
-    <button id="btnGoogle" class="google">
-      Sign in with Google
-    </button>
-
-    <div class="divider">or</div>
-
-    <!-- LOGIN -->
-    <div id="loginBox">
-      <input id="loginEmail" type="email" placeholder="Email" />
-      <input id="loginPassword" type="password" placeholder="Password" />
-      <button id="btnLogin" class="primary">Sign in</button>
-      <button id="showSignup" class="secondary">Create account</button>
-    </div>
-
-    <!-- SIGNUP -->
-    <div id="signupBox" class="hidden">
-      <input id="signupEmail" type="email" placeholder="Email" />
-      <input id="signupPassword" type="password" placeholder="Password" />
-      <button id="btnSignup" class="primary">Create account</button>
-      <button id="showLogin" class="secondary">Back to login</button>
-    </div>
-  </div>
-
-  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
-
   <script>
-    let supabase;
-
-    /* -------------------------------
-       INIT SUPABASE (FROM SERVER ENV)
-       ------------------------------- */
     (async () => {
-      const res = await fetch('/api/config');
-      const cfg = await res.json();
+      const msg = id => { document.getElementById('msg').innerText = id; };
+      try {
+        // 1) fetch public config from your server
+        const cfgRes = await fetch('/api/config');
+        if (!cfgRes.ok) throw new Error('Failed to load config from server');
+        const { supabaseUrl, supabaseAnonKey } = await cfgRes.json();
 
-      supabase = window.supabase.createClient(
-        cfg.supabaseUrl,
-        cfg.supabaseAnonKey,
-        {
+        // 2) create single client
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
           auth: {
             persistSession: true,
             autoRefreshToken: true,
+            // allow Supabase to parse callback URL and restore session (v2 recommended)
             detectSessionInUrl: true
           }
-        }
-      );
+        });
 
-      /* Auto-handle OAuth return */
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        await finalizeLogin(data.session.access_token);
+        // 3) First try: let supabase parse the URL and restore session
+        msg('Finalizing OAuth (automatic) ...');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) console.warn('getSession() returned error', sessionError);
+
+        if (sessionData && sessionData.session) {
+          // success path
+          console.log('Session restored automatically', sessionData);
+          msg('Signed in. Redirecting...');
+          // call backend to initialize user (safe idempotent)
+          await fetch('/api/auth/google/complete', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${sessionData.session.access_token}` }
+          }).catch(e => console.warn('init accounts error', e));
+          window.location.replace('/');
+          return;
+        }
+
+        // 4) Fallback: if no session found, try explicit code exchange (if code exists)
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+
+        if (!code) {
+          // no code & no session => show helpful diagnostics
+          console.error('No session and no code in URL. Full URL:', window.location.href);
+          msg('Login failed: no session and no OAuth code found. Clear browser storage and try again.');
+          return;
+        }
+
+        // 5) Exchange the code (explicit mode)
+        msg('Exchanging OAuth code...');
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error || !data?.session) {
+          console.error('exchangeCodeForSession failed', error);
+          msg('Login failed during code exchange. See console for details.');
+          return;
+        }
+
+        console.log('Code exchange success', data);
+        msg('Signed in. Initializing account...');
+        // call backend to initialize user (safe idempotent)
+        await fetch('/api/auth/google/complete', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${data.session.access_token}` }
+        }).catch(e => console.warn('init accounts error', e));
+
+        // done
+        window.location.replace('/');
+      } catch (err) {
+        console.error('Callback error:', err);
+        document.getElementById('msg').innerText = 'Unexpected error during login. Check console.';
       }
     })();
-
-    /* -------------------------------
-       GOOGLE LOGIN (NO CALLBACK PAGE)
-       ------------------------------- */
-    document.getElementById('btnGoogle').onclick = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) alert(error.message);
-    };
-
-    /* -------------------------------
-       EMAIL LOGIN
-       ------------------------------- */
-    document.getElementById('btnLogin').onclick = async () => {
-      const email = loginEmail.value.trim();
-      const password = loginPassword.value;
-
-      const { data, error } =
-        await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) return alert(error.message);
-
-      await finalizeLogin(data.session.access_token);
-    };
-
-    /* -------------------------------
-       SIGNUP
-       ------------------------------- */
-    document.getElementById('btnSignup').onclick = async () => {
-      const email = signupEmail.value.trim();
-      const password = signupPassword.value;
-
-      const res = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const out = await res.json();
-      if (!res.ok) return alert(out.message);
-
-      alert('Account created. Please sign in.');
-      toggleLogin(true);
-    };
-
-    /* -------------------------------
-       FINALIZE LOGIN (COMMON)
-       ------------------------------- */
-    async function finalizeLogin(token) {
-      await fetch('/api/auth/google/complete', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      window.location.replace('/');
-    }
-
-    /* -------------------------------
-       UI TOGGLE
-       ------------------------------- */
-    const loginBox = document.getElementById('loginBox');
-    const signupBox = document.getElementById('signupBox');
-
-    document.getElementById('showSignup').onclick = () => toggleLogin(false);
-    document.getElementById('showLogin').onclick = () => toggleLogin(true);
-
-    function toggleLogin(showLogin) {
-      loginBox.classList.toggle('hidden', !showLogin);
-      signupBox.classList.toggle('hidden', showLogin);
-    }
   </script>
 </body>
 </html>
