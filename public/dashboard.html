@@ -1,1 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Finance Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Dashboard specific styles */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .user-details h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .user-details p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .logout-btn {
+            padding: 10px 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+        
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .balance {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin: 1rem 0;
+        }
+        
+        .positive {
+            color: #10b981;
+        }
+        
+        .negative {
+            color: #ef4444;
+        }
+        
+        .transaction-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .transaction-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+        
+        .transaction-category {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .transaction-amount {
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .add-transaction-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .add-transaction-btn:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">
+                    <!-- Will be populated by JS -->
+                </div>
+                <div class="user-details">
+                    <h2 id="user-name">Loading...</h2>
+                    <p id="user-email">Loading...</p>
+                </div>
+            </div>
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading your dashboard...
+        </div>
+        
+        <div id="dashboard-content" class="hidden">
+            <div class="dashboard-content">
+                <div class="card">
+                    <h3>Total Balance</h3>
+                    <div class="balance" id="total-balance">$0.00</div>
+                    <p>Last updated: <span id="last-updated">-</span></p>
+                </div>
+                
+                <div class="card">
+                    <h3>Recent Transactions</h3>
+                    <ul class="transaction-list" id="transaction-list">
+                        <!-- Will be populated by JS -->
+                    </ul>
+                    <button class="add-transaction-btn" id="add-transaction">Add Transaction</button>
+                </div>
+                
+                <div class="card">
+                    <h3>Accounts</h3>
+                    <div id="accounts-list">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Quick Stats</h3>
+                    <div id="quick-stats">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="auth-required" class="hidden" style="text-align: center; padding: 4rem;">
+            <h2>Authentication Required</h2>
+            <p>Please log in to access the dashboard.</p>
+            <button onclick="window.location.href='login.html'" style="margin-top: 1rem; padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                Go to Login
+            </button>
+        </div>
+    </div>
 
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://your-project-id.supabase.co';  // Replace with your URL
+        const supabaseAnonKey = 'your-anon-key';  // Replace with your key
+        
+        const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true
+            }
+        });
+
+        // DOM Elements
+        const loadingEl = document.getElementById('loading');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const authRequired = document.getElementById('auth-required');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        // Check authentication on page load
+        async function checkAuth() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) throw error;
+                
+                if (user) {
+                    // User is authenticated
+                    displayUserInfo(user);
+                    dashboardContent.classList.remove('hidden');
+                    loadingEl.classList.add('hidden');
+                    
+                    // Load user data
+                    await loadUserData(user.id);
+                } else {
+                    // No user found
+                    showAuthRequired();
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showAuthRequired();
+            }
+        }
+
+        // Display user information
+        function displayUserInfo(user) {
+            // Set user name
+            const userName = user.user_metadata?.full_name || 
+                            user.user_metadata?.name || 
+                            user.email?.split('@')[0] || 
+                            'User';
+            document.getElementById('user-name').textContent = userName;
+            
+            // Set user email
+            document.getElementById('user-email').textContent = user.email || 'No email';
+            
+            // Set avatar
+            const avatarEl = document.getElementById('user-avatar');
+            if (user.user_metadata?.avatar_url) {
+                avatarEl.innerHTML = `<img src="${user.user_metadata.avatar_url}" alt="${userName}">`;
+            } else {
+                const initials = userName.charAt(0).toUpperCase();
+                avatarEl.textContent = initials;
+                avatarEl.style.background = getColorFromName(userName);
+            }
+        }
+
+        // Generate color from name for avatar
+        function getColorFromName(name) {
+            const colors = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b',
+                '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+            ];
+            const index = name.charCodeAt(0) % colors.length;
+            return colors[index];
+        }
+
+        // Load user data from database
+        async function loadUserData(userId) {
+            try {
+                // Load accounts
+                const { data: accounts, error: accountsError } = await supabase
+                    .from('accounts')
+                    .select('*')
+                    .eq('user_id', userId);
+                
+                if (accountsError) throw accountsError;
+                
+                // Display accounts
+                displayAccounts(accounts);
+                
+                // Load transactions
+                const { data: transactions, error: transactionsError } = await supabase
+                    .from('ledger_entries')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (transactionsError) throw transactionsError;
+                
+                // Display transactions
+                displayTransactions(transactions);
+                
+                // Calculate and display total balance
+                const totalBalance = accounts?.reduce((sum, account) => sum + (account.current_balance || 0), 0) || 0;
+                document.getElementById('total-balance').textContent = `$${totalBalance.toFixed(2)}`;
+                document.getElementById('total-balance').className = `balance ${totalBalance >= 0 ? 'positive' : 'negative'}`;
+                
+                // Update last updated time
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                showError('Failed to load user data');
+            }
+        }
+
+        // Display accounts
+        function displayAccounts(accounts) {
+            const accountsList = document.getElementById('accounts-list');
+            
+            if (!accounts || accounts.length === 0) {
+                accountsList.innerHTML = '<p>No accounts found. Create your first account!</p>';
+                return;
+            }
+            
+            let html = '<ul style="list-style: none; padding: 0;">';
+            accounts.forEach(account => {
+                const balanceClass = account.current_balance >= 0 ? 'positive' : 'negative';
+                html += `
+                    <li style="padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${account.name}</strong><br>
+                                <small style="color: #666;">${account.account_type}</small>
+                            </div>
+                            <div class="${balanceClass}" style="font-weight: 600;">
+                                $${account.current_balance?.toFixed(2) || '0.00'}
+                            </div>
+                        </div>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            
+            accountsList.innerHTML = html;
+        }
+
+        // Display transactions
+        function displayTransactions(transactions) {
+            const transactionList = document.getElementById('transaction-list');
+            
+            if (!transactions || transactions.length === 0) {
+                transactionList.innerHTML = '<li style="padding: 1rem 0; color: #666; text-align: center;">No transactions yet</li>';
+                return;
+            }
+            
+            let html = '';
+            transactions.forEach(transaction => {
+                const amountClass = transaction.amount >= 0 ? 'positive' : 'negative';
+                const formattedDate = new Date(transaction.created_at).toLocaleDateString();
+                
+                html += `
+                    <li class="transaction-item">
+                        <div>
+                            <div class="transaction-category">${transaction.note || 'Uncategorized'}</div>
+                            <small style="color: #666;">${formattedDate}</small>
+                        </div>
+                        <div class="transaction-amount ${amountClass}">
+                            ${transaction.amount >= 0 ? '+' : ''}$${Math.abs(transaction.amount).toFixed(2)}
+                        </div>
+                    </li>
+                `;
+            });
+            
+            transactionList.innerHTML = html;
+        }
+
+        // Show auth required message
+        function showAuthRequired() {
+            loadingEl.classList.add('hidden');
+            dashboardContent.classList.add('hidden');
+            authRequired.classList.remove('hidden');
+        }
+
+        // Show error message
+        function showError(message) {
+            // You can implement a toast or alert system here
+            console.error(message);
+            alert(message);
+        }
+
+        // Logout function
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) throw error;
+                
+                // Redirect to login page
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                showError('Error during logout. Please try again.');
+            }
+        });
+
+        // Add transaction button
+        document.getElementById('add-transaction').addEventListener('click', () => {
+            // Open transaction modal or page
+            alert('Add transaction feature coming soon!');
+        });
+
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth event:', event);
+            
+            if (event === 'SIGNED_OUT') {
+                window.location.href = 'login.html';
+            } else if (event === 'SIGNED_IN') {
+                // Refresh page to load data
+                window.location.reload();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', checkAuth);
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                loadUserData(user.id);
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
