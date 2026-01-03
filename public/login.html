@@ -1,76 +1,483 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>FinFlow — Login</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Supabase Auth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-google {
+            background: white;
+            color: #333;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-google:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: #9ca3af;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .divider span {
+            padding: 0 1rem;
+        }
+
+        .toggle-form {
+            color: #3b82f6;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 1rem;
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 1.5rem;
+            color: #6b7280;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: #374151;
+        }
+    </style>
 </head>
 <body>
-  <h2>FinFlow Login</h2>
+    <div class="container">
+        <div class="logo">🔐</div>
+        
+        <!-- Login Form -->
+        <div id="login-form">
+            <h1>Welcome Back</h1>
+            <p class="subtitle">Sign in to your account to continue</p>
+            
+            <div id="error-message" class="error hidden"></div>
+            <div id="success-message" class="success hidden"></div>
+            
+            <form id="login-email-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+            
+            <div class="divider">
+                <span>OR</span>
+            </div>
+            
+            <button id="google-login" class="btn btn-google">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                Continue with Google
+            </button>
+            
+            <p style="margin-top: 1.5rem; color: #6b7280;">
+                Don't have an account? 
+                <button id="show-signup" class="toggle-form">Sign up here</button>
+            </p>
+            
+            <a href="/" class="back-link">← Back to Home</a>
+        </div>
 
-  <button id="google">Sign in with Google</button>
+        <!-- Sign Up Form -->
+        <div id="signup-form" class="hidden">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join our community today</p>
+            
+            <div id="signup-error" class="error hidden"></div>
+            <div id="signup-success" class="success hidden"></div>
+            
+            <form id="signup-email-form">
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+            
+            <div class="divider">
+                <span>OR</span>
+            </div>
+            
+            <button id="google-signup" class="btn btn-google">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                Sign up with Google
+            </button>
+            
+            <p style="margin-top: 1.5rem; color: #6b7280;">
+                Already have an account? 
+                <button id="show-login" class="toggle-form">Sign in here</button>
+            </p>
+            
+            <a href="/" class="back-link">← Back to Home</a>
+        </div>
+    </div>
 
-  <div>
-    <input id="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
-    <button id="emailLogin">Sign in</button>
-  </div>
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://your-project.supabase.co'; // Replace with your URL
+        const supabaseAnonKey = 'your-anon-key'; // Replace with your key
+        const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
-  <script>
-    let supabase;
+        // DOM Elements
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const googleLoginBtn = document.getElementById('google-login');
+        const googleSignupBtn = document.getElementById('google-signup');
+        const showSignupBtn = document.getElementById('show-signup');
+        const showLoginBtn = document.getElementById('show-login');
+        const loginEmailForm = document.getElementById('login-email-form');
+        const signupEmailForm = document.getElementById('signup-email-form');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+        const signupError = document.getElementById('signup-error');
+        const signupSuccess = document.getElementById('signup-success');
 
-    async function init() {
-      const cfg = await (await fetch('/api/config')).json();
-
-      supabase = window.supabase.createClient(
-        cfg.supabaseUrl,
-        cfg.supabaseAnonKey,
-        {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true // 🔑 FIX
-          }
+        // Check if user is already logged in
+        async function checkExistingSession() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) throw error;
+                
+                if (user) {
+                    // User is already logged in, redirect to dashboard
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.log('No existing session:', error.message);
+            }
         }
-      );
 
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        await finalize(data.session.access_token);
-      }
-    }
+        // Show/Hide Forms
+        showSignupBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            clearMessages();
+        });
 
-    document.getElementById('google').onclick = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/login.html`
+        showLoginBtn.addEventListener('click', () => {
+            signupForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            clearMessages();
+        });
+
+        // Clear messages
+        function clearMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+            signupError.classList.add('hidden');
+            signupSuccess.classList.add('hidden');
         }
-      });
-      if (error) alert(error.message);
-    };
 
-    document.getElementById('emailLogin').onclick = async () => {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+        // Show message
+        function showMessage(element, message, type = 'error') {
+            element.textContent = message;
+            element.className = type === 'error' ? 'error' : 'success';
+            element.classList.remove('hidden');
+        }
 
-      const { data, error } =
-        await supabase.auth.signInWithPassword({ email, password });
+        // Email/Password Login
+        loginEmailForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                
+                // Success - redirect to dashboard
+                window.location.href = '/';
+            } catch (error) {
+                showMessage(errorMessage, error.message);
+            }
+        });
 
-      if (error) return alert(error.message);
-      await finalize(data.session.access_token);
-    };
+        // Email/Password Sign Up
+        signupEmailForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        emailRedirectTo: window.location.origin + '/login'
+                    }
+                });
+                
+                if (error) throw error;
+                
+                // Show success message
+                showMessage(signupSuccess, 'Check your email for confirmation link!', 'success');
+                
+                // Clear form
+                document.getElementById('signup-email').value = '';
+                document.getElementById('signup-password').value = '';
+                
+                // Switch to login form after 3 seconds
+                setTimeout(() => {
+                    signupForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                }, 3000);
+                
+            } catch (error) {
+                showMessage(signupError, error.message);
+            }
+        });
 
-    async function finalize(token) {
-      await fetch('/api/auth/google/complete', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      window.location.replace('/');
-    }
+        // Google OAuth Login/Signup
+        async function signInWithGoogle() {
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + '/login',
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent'
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+            } catch (error) {
+                showMessage(errorMessage, error.message);
+                showMessage(signupError, error.message);
+            }
+        }
 
-    init();
-  </script>
+        // Attach Google auth to both buttons
+        googleLoginBtn.addEventListener('click', signInWithGoogle);
+        googleSignupBtn.addEventListener('click', signInWithGoogle);
+
+        // Handle OAuth callback from URL
+        async function handleOAuthCallback() {
+            const hash = window.location.hash;
+            
+            if (hash.includes('access_token') || hash.includes('error')) {
+                // Parse the hash
+                const params = new URLSearchParams(hash.substring(1));
+                const error = params.get('error');
+                const errorDescription = params.get('error_description');
+                
+                if (error) {
+                    showMessage(errorMessage, `${error}: ${errorDescription}`);
+                } else {
+                    // Get the session from URL
+                    const { data, error } = await supabase.auth.getSessionFromUrl({
+                        storeSession: true
+                    });
+                    
+                    if (error) {
+                        showMessage(errorMessage, error.message);
+                    } else {
+                        // Redirect to dashboard
+                        window.location.href = '/';
+                    }
+                }
+                
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        // Handle auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth state changed:', event);
+            
+            if (event === 'SIGNED_IN') {
+                // Redirect to dashboard
+                window.location.href = '/';
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkExistingSession();
+            handleOAuthCallback();
+        });
+
+        // Add a Forgot Password link (optional)
+        const forgotPassword = document.createElement('p');
+        forgotPassword.innerHTML = '<button class="toggle-form" style="margin-top: 0.5rem;">Forgot password?</button>';
+        forgotPassword.querySelector('button').addEventListener('click', async () => {
+            const email = prompt('Enter your email to reset password:');
+            if (email) {
+                try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin + '/login',
+                    });
+                    
+                    if (error) throw error;
+                    
+                    alert('Password reset email sent! Check your inbox.');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        });
+        document.querySelector('#login-form form').appendChild(forgotPassword);
+    </script>
 </body>
 </html>
