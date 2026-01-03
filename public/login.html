@@ -62,84 +62,83 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // set these from your environment when deploying or generate at build-time
-    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; // replace
-    const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY"; // replace
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
+<script>
+  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
 
-    const supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
 
-    // Elements
-    const btnGoogle = document.getElementById('btnGoogle');
-    const btnLogin = document.getElementById('btnLogin');
-    const btnShowSignup = document.getElementById('btnShowSignup');
-    const btnShowLogin = document.getElementById('btnShowLogin');
-    const btnSignup = document.getElementById('btnSignup');
-    const loginDiv = document.getElementById('emailLogin');
-    const signupDiv = document.getElementById('signupForm');
-
-    // Google OAuth
-    btnGoogle.addEventListener('click', async () => {
-      // will redirect to Google; redirect back to this origin
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin }
-      });
-      if (error) alert(error.message);
-    });
-
-    btnLogin.addEventListener('click', async () => {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      if (!email || !password) return alert('Email and password required');
-
-      // client-side sign-in using anon key (ok for password grant)
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return alert('Login error: ' + error.message);
-      // on success, supabase-js stores session in localStorage and you can redirect
-      console.log('Logged in', data);
-      window.location.href = '/'; // or your app main page
-    });
-
-    btnShowSignup.addEventListener('click', () => {
-      loginDiv.style.display = 'none';
-      signupDiv.style.display = 'block';
-    });
-    btnShowLogin && btnShowLogin.addEventListener('click', () => {
-      loginDiv.style.display = 'block';
-      signupDiv.style.display = 'none';
-    });
-
-    btnSignup.addEventListener('click', async () => {
-      const email = document.getElementById('s_email').value.trim();
-      const password = document.getElementById('s_password').value;
-      if (!email || !password) return alert('Email and password required');
-
-      // Call our secure server endpoint to create a user and seed default accounts
-      try {
-        const res = await fetch('/api/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.message || 'Signup failed');
-        alert('Account created. Please check your email for confirmation (if enabled) or login now.');
-        loginDiv.style.display = 'block';
-        signupDiv.style.display = 'none';
-      } catch (err) {
-        alert('Signup error: ' + err.message);
+  document.getElementById('btnGoogle').onclick = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
       }
     });
+    if (error) alert(error.message);
+  };
 
-    // OPTIONAL: check session on load and redirect if logged in
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        window.location.href = '/';
-      }
-    })();
-  </script>
+  document.getElementById('btnLogin').onclick = async () => {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      alert('Enter email and password');
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    window.location.href = '/';
+  };
+
+  document.getElementById('btnSignup').onclick = async () => {
+    const email = document.getElementById('s_email').value.trim();
+    const password = document.getElementById('s_password').value;
+
+    if (!email || !password) {
+      alert('Enter email and password');
+      return;
+    }
+
+    const res = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.message || 'Signup failed');
+      return;
+    }
+
+    alert('Signup successful. Please login.');
+    document.getElementById('btnShowLogin').click();
+  };
+
+  document.getElementById('btnShowSignup').onclick = () => {
+    document.getElementById('emailLogin').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'block';
+  };
+
+  document.getElementById('btnShowLogin').onclick = () => {
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('emailLogin').style.display = 'block';
+  };
+</script>
+
 </body>
 </html>
