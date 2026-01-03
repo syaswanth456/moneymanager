@@ -1,73 +1,17 @@
-require('dotenv').config();
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-const helmet = require('helmet');
-const bodyParser = require('body-parser');
-
-const signup = require('./api/signup');
-const login = require('./api/login');
-const googleComplete = require('./api/auth/google/complete');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(express.json());
 
-/* ================================
-   SECURITY (CSP CONFIGURED)
-   ================================ */
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://cdn.jsdelivr.net"
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com"
-        ],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com"
-        ],
-        connectSrc: [
-          "'self'",
-          "https://*.supabase.co"
-        ],
-        imgSrc: [
-          "'self'",
-          "data:",
-          "https://*.googleusercontent.com"
-        ],
-        frameSrc: [
-          "https://accounts.google.com"
-        ]
-      }
-    }
-  })
-);
-
-/* ================================
-   MIDDLEWARE
-   ================================ */
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
-app.use(bodyParser.json());
-
-/* ================================
-   STATIC FILES
-   ================================ */
+// Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* ================================
-   CONFIG API (SAFE ENV EXPOSURE)
-   ================================ */
+/* PUBLIC CONFIG (SAFE) */
 app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL,
@@ -75,29 +19,30 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-/* ================================
-   API ROUTES
-   ================================ */
-app.use('/api/signup', signup);
-app.use('/api/login', login);
-app.use('/api/auth/google/complete', googleComplete);
+/* GOOGLE / EMAIL LOGIN FINALIZATION */
+app.post('/api/auth/google/complete', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ message: 'Missing token' });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+    // 🔹 IMPORTANT:
+    // This must be IDEMPOTENT
+    // If user already initialized → do nothing
+    // Example: create Cash / Bank accounts if not exist
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Init error:', err);
+    res.status(500).json({ message: 'Init failed' });
+  }
 });
 
-/* ================================
-   SPA FALLBACK
-   ================================ */
-app.get('*', (req, res) => {
+// Fallback
+app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, 'public/login.html'));
 });
 
-/* ================================
-   START SERVER
-   ================================ */
-const PORT = process.env.PORT || 8787;
-
-app.listen(PORT, () => {
-  console.log(`✅ FinFlow running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`Server running on port ${PORT}`)
+);
