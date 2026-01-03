@@ -1,61 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>FinFlow — Login</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 </head>
 <body>
-  <h2>FinFlow — Login</h2>
+  <h2>FinFlow Login</h2>
 
-  <button id="btnGoogle">Sign in with Google</button>
+  <button id="google">Sign in with Google</button>
+
   <div>
-    <input id="email" placeholder="email" />
-    <input id="password" placeholder="password" type="password" />
-    <button id="btnEmail">Sign in</button>
+    <input id="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="emailLogin">Sign in</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
   <script>
     let supabase;
-    (async () => {
-      const cfg = await (await fetch('/api/config')).json();
-      supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-      });
 
-      // If a session already exists (e.g. after OAuth redirect), finalize.
+    async function init() {
+      const cfg = await (await fetch('/api/config')).json();
+
+      supabase = window.supabase.createClient(
+        cfg.supabaseUrl,
+        cfg.supabaseAnonKey,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true // 🔑 FIX
+          }
+        }
+      );
+
       const { data } = await supabase.auth.getSession();
       if (data?.session) {
-        console.log('Session exists on page load', data);
-        // call backend to init accounts, then redirect
-        await fetch('/api/auth/google/complete', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${data.session.access_token}` }
-        }).catch(e => console.warn('init accounts error', e));
-        window.location.replace('/');
+        await finalize(data.session.access_token);
       }
-    })();
+    }
 
-    document.getElementById('btnGoogle').onclick = async () => {
+    document.getElementById('google').onclick = async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin } // important: redirect to origin (no callback page required)
+        options: {
+          redirectTo: `${window.location.origin}/login.html`
+        }
       });
       if (error) alert(error.message);
     };
 
-    document.getElementById('btnEmail').onclick = async () => {
+    document.getElementById('emailLogin').onclick = async () => {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      const { data, error } =
+        await supabase.auth.signInWithPassword({ email, password });
+
       if (error) return alert(error.message);
+      await finalize(data.session.access_token);
+    };
+
+    async function finalize(token) {
       await fetch('/api/auth/google/complete', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${data.session.access_token}` }
-      }).catch(e => console.warn('init accounts error', e));
+        headers: { Authorization: `Bearer ${token}` }
+      });
       window.location.replace('/');
-    };
+    }
+
+    init();
   </script>
 </body>
 </html>
