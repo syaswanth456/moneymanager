@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>FinFlow Dashboard</title>
+</head>
+<body>
+  <h1>Welcome to FinFlow 🎉</h1>
+  <p>You are logged in.</p>
+
+  <button id="logout">Logout</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
+  <script>
+    async function init() {
+      const cfg = await (await fetch('/api/config')).json();
+      const supabase = window.supabase.createClient(
+        cfg.supabaseUrl,
+        cfg.supabaseAnonKey
+      );
+
+      document.getElementById('logout').onclick = async () => {
+        await supabase.auth.signOut();
+        window.location.replace('/login.html');
+      };
+    }
+    init();
+  </script>
+</body>
+</html>
