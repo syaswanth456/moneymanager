@@ -62,32 +62,36 @@
     </div>
   </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
 <script>
-  const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
-  const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+(async () => {
+  /* Fetch public config from server */
+  const res = await fetch('/api/config');
+  const config = await res.json();
 
   const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
+    config.supabaseUrl,
+    config.supabaseAnonKey
   );
 
+  /* GOOGLE LOGIN */
   document.getElementById('btnGoogle').onclick = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: `${window.location.origin}/auth-callback.html`
       }
     });
     if (error) alert(error.message);
   };
 
+  /* EMAIL LOGIN */
   document.getElementById('btnLogin').onclick = async () => {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
     if (!email || !password) {
-      alert('Enter email and password');
+      alert('Email and password required');
       return;
     }
 
@@ -104,31 +108,33 @@
     window.location.href = '/';
   };
 
+  /* SIGNUP */
   document.getElementById('btnSignup').onclick = async () => {
     const email = document.getElementById('s_email').value.trim();
     const password = document.getElementById('s_password').value;
 
     if (!email || !password) {
-      alert('Enter email and password');
+      alert('Email and password required');
       return;
     }
 
-    const res = await fetch('/api/signup', {
+    const response = await fetch('/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    const data = await response.json();
+    if (!response.ok) {
       alert(data.message || 'Signup failed');
       return;
     }
 
-    alert('Signup successful. Please login.');
+    alert('Account created. Please login.');
     document.getElementById('btnShowLogin').click();
   };
 
+  /* UI TOGGLE */
   document.getElementById('btnShowSignup').onclick = () => {
     document.getElementById('emailLogin').style.display = 'none';
     document.getElementById('signupForm').style.display = 'block';
@@ -138,7 +144,10 @@
     document.getElementById('signupForm').style.display = 'none';
     document.getElementById('emailLogin').style.display = 'block';
   };
+})();
 </script>
+
+  
 
 </body>
 </html>
