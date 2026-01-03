@@ -1,11 +1,12 @@
 const express = require('express');
-const fetch = require('node-fetch');
-
 const router = express.Router();
 
 router.post('/', async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password required' });
+    }
 
     const response = await fetch(
       `${process.env.SUPABASE_URL}/auth/v1/token?grant_type=password`,
@@ -21,11 +22,15 @@ router.post('/', async (req, res) => {
     );
 
     const data = await response.json();
-    if (!response.ok) return res.status(401).json(data);
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
 
     res.json(data);
 
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: err.message });
   }
 });
