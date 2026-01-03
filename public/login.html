@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FinFlow — Login</title>
+  <style>
+    /* Small minimal styles (feel free to match your app theme) */
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#0f172a; color:#e2e8f0; }
+    .card { width:420px; background:#0b1220; padding:28px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.6); }
+    h1{ margin:0 0 12px; font-size:20px; }
+    .btn { width:100%; padding:12px 14px; border-radius:8px; border:0; cursor:pointer; font-weight:600; }
+    .btn-google { background:#fff; color:#111; display:flex; gap:10px; align-items:center; justify-content:center; }
+    .or { text-align:center; margin:14px 0; color:#94a3b8; }
+    label { display:block; font-size:13px; color:#94a3b8; margin-bottom:6px; }
+    input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #22303f; background:#071025; color:#e6eef8 }
+    .row { margin-bottom:12px; }
+    .muted { font-size:12px; color:#94a3b8; text-align:center; margin-top:8px; }
+    .link { color:#7c3aed; cursor:pointer; text-decoration:underline;}
+  </style>
+</head>
+<body>
+  <div class="card" id="authCard">
+    <h1>Sign in to FinFlow</h1>
+
+    <button class="btn btn-google" id="btnGoogle">
+      <svg width="18" height="18" viewBox="0 0 533.5 544.3" style="display:block"><path fill="#4285f4" d="M533.5 278.4c0-17.7-1.6-34.7-4.7-51.2H272v96.8h147.1c-6.4 34.1-26 62.9-55.4 82.1v68.3h89.4c52.6-48.4 82.4-119.9 82.4-196z"/><path fill="#34a853" d="M272 544.3c73.8 0 135.6-24.5 180.8-66.4l-89.4-68.3c-25.3 17-57.8 27-91.4 27-70.2 0-129.7-47.3-151.1-111.1H27.6v69.9c45 88.6 136.9 158.9 244.4 158.9z"/><path fill="#fbbc04" d="M120.9 327.5c-10.8-31.7-10.8-65.9 0-97.6V160H27.6C-7 221.8-7 322.5 27.6 384.3l93.3-56.8z"/><path fill="#ea4335" d="M272 109.5c38.9 0 73.9 13.3 101.4 39.4l76-76C404 27.7 342.2 0 272 0 164.5 0 72.6 70.3 27.6 159.9l93.3 69.5C142.3 156.8 201.8 109.5 272 109.5z"/></svg>
+      Sign in with Google
+    </button>
+
+    <div class="or">or</div>
+
+    <div id="emailLogin">
+      <div class="row">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@gmail.com" />
+      </div>
+      <div class="row">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="••••••••" />
+      </div>
+
+      <button id="btnLogin" class="btn" style="background:#7c3aed;color:white;margin-bottom:8px">Sign in</button>
+      <button id="btnShowSignup" class="btn" style="background:#0b1220;color:#7c3aed;border:1px solid #7c3aed">Create account</button>
+
+      <div class="muted">By continuing you agree to our <span class="link">Terms</span></div>
+    </div>
+
+    <div id="signupForm" style="display:none;">
+      <div class="row">
+        <label for="s_email">Email</label>
+        <input id="s_email" type="email" placeholder="you@gmail.com" />
+      </div>
+      <div class="row">
+        <label for="s_password">Password</label>
+        <input id="s_password" type="password" placeholder="Choose a strong password" />
+      </div>
+
+      <button id="btnSignup" class="btn" style="background:#059669;color:white;margin-bottom:8px">Create account</button>
+      <button id="btnShowLogin" class="btn" style="background:#0b1220;color:#059669;border:1px solid #059669">Back to login</button>
+      <div class="muted">We will create your account and seed default accounts (Cash & Bank)</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // set these from your environment when deploying or generate at build-time
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; // replace
+    const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY"; // replace
+
+    const supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Elements
+    const btnGoogle = document.getElementById('btnGoogle');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnShowSignup = document.getElementById('btnShowSignup');
+    const btnShowLogin = document.getElementById('btnShowLogin');
+    const btnSignup = document.getElementById('btnSignup');
+    const loginDiv = document.getElementById('emailLogin');
+    const signupDiv = document.getElementById('signupForm');
+
+    // Google OAuth
+    btnGoogle.addEventListener('click', async () => {
+      // will redirect to Google; redirect back to this origin
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) alert(error.message);
+    });
+
+    btnLogin.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) return alert('Email and password required');
+
+      // client-side sign-in using anon key (ok for password grant)
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert('Login error: ' + error.message);
+      // on success, supabase-js stores session in localStorage and you can redirect
+      console.log('Logged in', data);
+      window.location.href = '/'; // or your app main page
+    });
+
+    btnShowSignup.addEventListener('click', () => {
+      loginDiv.style.display = 'none';
+      signupDiv.style.display = 'block';
+    });
+    btnShowLogin && btnShowLogin.addEventListener('click', () => {
+      loginDiv.style.display = 'block';
+      signupDiv.style.display = 'none';
+    });
+
+    btnSignup.addEventListener('click', async () => {
+      const email = document.getElementById('s_email').value.trim();
+      const password = document.getElementById('s_password').value;
+      if (!email || !password) return alert('Email and password required');
+
+      // Call our secure server endpoint to create a user and seed default accounts
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.message || 'Signup failed');
+        alert('Account created. Please check your email for confirmation (if enabled) or login now.');
+        loginDiv.style.display = 'block';
+        signupDiv.style.display = 'none';
+      } catch (err) {
+        alert('Signup error: ' + err.message);
+      }
+    });
+
+    // OPTIONAL: check session on load and redirect if logged in
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        window.location.href = '/';
+      }
+    })();
+  </script>
+</body>
+</html>
