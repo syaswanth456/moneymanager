@@ -1,41 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Signing you in…</title>
 </head>
 <body>
-  <p>Completing login…</p>
+  <p>Completing sign-in…</p>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7"></script>
   <script>
-    const SUPABASE_URL = "https://REAL_PROJECT_ID.supabase.co";
-    const SUPABASE_ANON_KEY = "REAL_PUBLIC_ANON_KEY";
-
-    const supabase = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY
-    );
-
     (async () => {
-      // Supabase parses the OAuth session from URL automatically
-      const { data: { session } } = await supabase.auth.getSession();
+      // Fetch config from backend
+      const res = await fetch('/api/config');
+      const { supabaseUrl, supabaseAnonKey } = await res.json();
 
-      if (!session) {
-        document.body.innerText = "Login failed";
+      // IMPORTANT: create ONE client only
+      const supabase = window.supabase.createClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          auth: {
+            persistSession: true,
+            detectSessionInUrl: true
+          }
+        }
+      );
+
+      // This line FINALIZES OAuth and restores state
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error || !data.session) {
+        document.body.innerText = 'Login failed. Please try again.';
         return;
       }
 
-      // Call backend to finalize setup
+      // OPTIONAL: call backend to init accounts (Google users)
       await fetch('/api/auth/google/complete', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${data.session.access_token}`
         }
       });
 
       // Redirect to app dashboard
-      window.location.href = '/';
+      window.location.replace('/');
     })();
   </script>
 </body>
