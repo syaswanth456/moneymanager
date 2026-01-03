@@ -11,25 +11,34 @@
   <script>
     (async () => {
       try {
-        // 1️⃣ Fetch public config
+        // 1️⃣ Read OAuth code from URL
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+
+        if (!code) {
+          document.body.innerText = 'Missing OAuth code.';
+          return;
+        }
+
+        // 2️⃣ Get Supabase public config
         const res = await fetch('/api/config');
         const { supabaseUrl, supabaseAnonKey } = await res.json();
 
-        // 2️⃣ Create ONE Supabase client
+        // 3️⃣ Create Supabase client (ONE TIME)
         const supabase = window.supabase.createClient(
           supabaseUrl,
           supabaseAnonKey,
           {
             auth: {
               persistSession: true,
-              detectSessionInUrl: false // IMPORTANT for v2
+              autoRefreshToken: true
             }
           }
         );
 
-        // 3️⃣ EXPLICITLY exchange OAuth code
+        // 4️⃣ Exchange ONLY the code (THIS IS THE FIX)
         const { data, error } =
-          await supabase.auth.exchangeCodeForSession(window.location.href);
+          await supabase.auth.exchangeCodeForSession(code);
 
         if (error || !data.session) {
           console.error(error);
@@ -37,7 +46,7 @@
           return;
         }
 
-        // 4️⃣ Initialize accounts (Google users)
+        // 5️⃣ Initialize accounts (Google users)
         await fetch('/api/auth/google/complete', {
           method: 'POST',
           headers: {
@@ -45,7 +54,7 @@
           }
         });
 
-        // 5️⃣ Redirect to app
+        // 6️⃣ Redirect to dashboard
         window.location.replace('/');
 
       } catch (err) {
@@ -56,4 +65,3 @@
   </script>
 </body>
 </html>
-
