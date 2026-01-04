@@ -1,7 +1,6 @@
 {
   "name": "money-manager",
-  "version": "3.0.0",
-  "main": "server.js",
+  "version": "3.0-fix",
   "scripts": {
     "start": "node server.js"
   },
