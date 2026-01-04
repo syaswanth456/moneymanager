@@ -1,26 +1,49 @@
-fetch("/config")
-  .then(r => r.json())
-  .then(cfg => {
-    google.accounts.id.initialize({
-      client_id: cfg.googleClientId,
-      callback: onLogin
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import admin from "firebase-admin";
+import { createClient } from "@supabase/supabase-js";
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static("public"));
+
+/* Firebase Admin */
+admin.initializeApp({
+  credential: admin.credential.cert(
+    JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+  )
+});
+
+/* Supabase DB */
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+/* API: Verify token & save user */
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const decoded = await admin.auth().verifyIdToken(token);
+
+    await supabase.from("users").upsert({
+      id: decoded.uid,
+      email: decoded.email,
+      name: decoded.name,
+      avatar_url: decoded.picture
     });
 
-    google.accounts.id.renderButton(
-      document.getElementById("google-btn"),
-      { theme: "outline", size: "large" }
-    );
-  });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+});
 
-function onLogin(res) {
-  fetch("/auth/google", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: res.credential })
-  })
-  .then(r => r.json())
-  .then(u => {
-    document.getElementById("status").innerText =
-      "Logged in as " + u.name;
-  });
-}
+app.listen(process.env.PORT, () =>
+  console.log("Server running")
+);
