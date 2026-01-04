@@ -1,30 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Money Manager v4</title>
+  <title>Money Manager v4.1</title>
 </head>
 <body>
 
 <h2>Money Manager</h2>
 
-<a href="/auth/google">
-  <button>Login with Google</button>
-</a>
-
-<button onclick="loadUser()">Check Login</button>
+<a href="/auth/google"><button>Login with Google</button></a>
+<button onclick="loadMe()">Check Login</button>
+<button onclick="loadAccounts()">Load Accounts</button>
 <button onclick="logout()">Logout</button>
 
-<pre id="output"></pre>
+<h3>User</h3>
+<pre id="me"></pre>
+
+<h3>Accounts</h3>
+<pre id="accounts"></pre>
+
+<h3>Withdraw</h3>
+<input id="fromId" placeholder="From Account ID">
+<input id="amt" placeholder="Amount">
+<button onclick="withdraw()">Withdraw → Cash</button>
+
+<h3>Expense</h3>
+<input id="expAcc" placeholder="Account ID">
+<input id="expAmt" placeholder="Amount">
+<button onclick="expense()">Add Expense</button>
 
 <script>
-function loadUser() {
-  fetch("/me")
-    .then(r => r.json())
-    .then(d => output.innerText = JSON.stringify(d, null, 2));
+function loadMe(){
+  fetch("/api/me").then(r=>r.json()).then(d=>me.innerText=JSON.stringify(d,null,2));
 }
 
-function logout() {
-  window.location.href = "/logout";
+function loadAccounts(){
+  fetch("/api/accounts").then(r=>r.json()).then(d=>accounts.innerText=JSON.stringify(d,null,2));
+}
+
+function withdraw(){
+  fetch("/api/withdraw",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      fromAccountId:fromId.value,
+      amount:Number(amt.value)
+    })
+  }).then(r=>r.json()).then(alertSuccess);
+}
+
+function expense(){
+  fetch("/api/expense",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      accountId:expAcc.value,
+      amount:Number(expAmt.value)
+    })
+  }).then(r=>r.json()).then(alertSuccess);
+}
+
+function alertSuccess(r){
+  if(r.error) alert(r.error);
+  else alert("Success");
+}
+
+function logout(){
+  location.href="/logout";
 }
 </script>
 
