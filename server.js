@@ -5,42 +5,34 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-/* 🔐 Google Client */
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const client = new OAuth2Client(CLIENT_ID);
 
-/* ✅ EXPOSE SAFE CONFIG TO FRONTEND */
+/* expose client id safely */
 app.get("/config", (req, res) => {
-  res.json({
-    googleClientId: process.env.GOOGLE_CLIENT_ID
-  });
+  res.json({ googleClientId: CLIENT_ID });
 });
 
-/* ✅ VERIFY GOOGLE LOGIN TOKEN */
+/* verify google token */
 app.post("/auth/google", async (req, res) => {
   try {
     const ticket = await client.verifyIdToken({
       idToken: req.body.token,
-      audience: process.env.GOOGLE_CLIENT_ID
+      audience: CLIENT_ID
     });
 
-    const payload = ticket.getPayload();
+    const p = ticket.getPayload();
 
     res.json({
-      userId: payload.sub,
-      name: payload.name,
-      email: payload.email,
-      picture: payload.picture
+      id: p.sub,
+      name: p.name,
+      email: p.email
     });
-
-  } catch (err) {
-    res.status(401).json({ error: "Invalid Google Token" });
+  } catch (e) {
+    res.status(401).json({ error: "Invalid Google token" });
   }
 });
 
-/* ✅ HEALTH CHECK */
 app.get("/health", (_, res) => res.send("OK"));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Server running on port ${PORT}`)
-);
+app.listen(process.env.PORT || 3000);
