@@ -7,12 +7,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-const db = new sqlite3.Database("./db/database.sqlite");
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-/* INIT DB */
-const schema = fs.readFileSync("./sql/schema.sql", "utf8");
-db.exec(schema);
 
 /* GOOGLE LOGIN */
 app.post("/auth/google", async (req, res) => {
