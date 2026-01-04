@@ -1,49 +1,32 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import admin from "firebase-admin";
-import { createClient } from "@supabase/supabase-js";
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Money Manager v4</title>
+</head>
+<body>
 
-dotenv.config();
+<h2>Money Manager</h2>
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static("public"));
+<a href="/auth/google">
+  <button>Login with Google</button>
+</a>
 
-/* Firebase Admin */
-admin.initializeApp({
-  credential: admin.credential.cert(
-    JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  )
-});
+<button onclick="loadUser()">Check Login</button>
+<button onclick="logout()">Logout</button>
 
-/* Supabase DB */
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+<pre id="output"></pre>
 
-/* API: Verify token & save user */
-app.post("/api/auth/google", async (req, res) => {
-  try {
-    const { token } = req.body;
+<script>
+function loadUser() {
+  fetch("/me")
+    .then(r => r.json())
+    .then(d => output.innerText = JSON.stringify(d, null, 2));
+}
 
-    const decoded = await admin.auth().verifyIdToken(token);
+function logout() {
+  window.location.href = "/logout";
+}
+</script>
 
-    await supabase.from("users").upsert({
-      id: decoded.uid,
-      email: decoded.email,
-      name: decoded.name,
-      avatar_url: decoded.picture
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(401).json({ error: "Unauthorized" });
-  }
-});
-
-app.listen(process.env.PORT, () =>
-  console.log("Server running")
-);
+</body>
+</html>
